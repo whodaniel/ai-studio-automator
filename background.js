@@ -652,7 +652,18 @@ let youtubeTokenExpiry = null;
 async function authenticateYouTube() {
   try {
     console.log('🔐 Authenticating with YouTube...');
-    
+
+    // Clear any existing cached token first to ensure fresh auth
+    // This is crucial for account switching
+    if (youtubeAccessToken) {
+      try {
+        await chrome.identity.removeCachedAuthToken({ token: youtubeAccessToken });
+        console.log('🧹 Cleared previous cached token');
+      } catch (e) {
+        console.warn('⚠️ Could not clear cached token:', e);
+      }
+    }
+
     // Check if we should skip native auth based on previous failures
     const { preferWebAuth } = await chrome.storage.local.get('preferWebAuth');
     
@@ -718,14 +729,38 @@ async function authenticateWithWebFlow() {
 async function handleAuthSuccess(token) {
   youtubeAccessToken = token;
   youtubeTokenExpiry = Date.now() + (3600 * 1000); // 1 hour
-  
+
+  // Fetch user profile to detect account switches
+  let userProfile = null;
+  try {
+    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (response.ok) {
+      userProfile = await response.json();
+      console.log(`✅ Authenticated as: ${userProfile.email}`);
+    }
+  } catch (e) {
+    console.warn('⚠️ Could not fetch user profile:', e);
+  }
+
+  // Check if this is a different account than before
+  const stored = await chrome.storage.local.get('lastAuthAccount');
+  if (stored.lastAuthAccount && userProfile && stored.lastAuthAccount !== userProfile.email) {
+    console.log(`🔄 Account switched from ${stored.lastAuthAccount} to ${userProfile.email}`);
+    // Clear any cached data from the previous account
+    await chrome.storage.local.remove(['cachedPlaylists', 'cachedVideos']);
+  }
+
   await chrome.storage.local.set({
     youtubeToken: token,
-    youtubeTokenExpiry: youtubeTokenExpiry
+    youtubeTokenExpiry: youtubeTokenExpiry,
+    userProfile: userProfile,
+    lastAuthAccount: userProfile?.email
   });
-  
+
   console.log('✅ YouTube authentication successful');
-  return { authenticated: true, token: token };
+  return { authenticated: true, token: token, userProfile };
 }
 
 async function isYouTubeAuthenticated() {
@@ -757,9 +792,17 @@ async function isYouTubeAuthenticated() {
       }
     }
     
-    // 3. If we have a token but it's expired
+    // 3. If we have a token but it's expired, clear it and cached data
     if (stored.youtubeToken) {
-      console.log('⚠️ Cached token expired, requiring re-auth');
+      console.log('⚠️ Cached token expired, clearing auth data');
+      await chrome.storage.local.remove([
+        'youtubeToken',
+        'youtubeTokenExpiry',
+        'cachedPlaylists',
+        'cachedVideos'
+      ]);
+      youtubeAccessToken = null;
+      youtubeTokenExpiry = null;
       return { authenticated: false, reason: 'expired' };
     }
 
@@ -885,19 +928,39 @@ async function getPlaylistVideos(playlistId) {
 
 async function signOutYouTube() {
   try {
+    // Remove cached token from Chrome's identity API
     if (youtubeAccessToken) {
       await chrome.identity.removeCachedAuthToken({ token: youtubeAccessToken });
     }
-    
+
+    // Clear all cached tokens (important for account switching)
+    try {
+      const allTokens = await chrome.identity.getAllCachedAuthTokens();
+      for (const tokenInfo of allTokens) {
+        await chrome.identity.removeCachedAuthToken({ token: tokenInfo.token });
+      }
+    } catch (e) {
+      // getAllCachedAuthTokens might not be available in all Chrome versions
+      console.warn('⚠️ Could not clear all cached tokens:', e);
+    }
+
+    // Clear memory cache
     youtubeAccessToken = null;
     youtubeTokenExpiry = null;
-    
-    await chrome.storage.local.remove(['youtubeToken', 'youtubeTokenExpiry']);
-    
-    console.log('✅ Signed out from YouTube');
+
+    // Clear storage - remove ALL auth-related keys
+    await chrome.storage.local.remove([
+      'youtubeToken',
+      'youtubeTokenExpiry',
+      'preferWebAuth',
+      'userProfile',
+      'lastAuthAccount'
+    ]);
+
+    console.log('✅ Signed out from YouTube - all auth data cleared');
     return { signedOut: true };
   } catch (error) {
-    console.error('Error signing out:', error);
+    console.error('❌ Error signing out:', error);
     throw error;
   }
 }
