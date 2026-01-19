@@ -25,7 +25,8 @@
     "https://aistudio.google.com/*",
     "https://notebooklm.google.com/*",
     "https://www.googleapis.com/*",
-    "https://*.usercontent.goog/*"
+    "https://*.usercontent.goog/*",
+    "https://backend-production-ee16.up.railway.app/*"
   ],
   
   "oauth2": {
