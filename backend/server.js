@@ -73,7 +73,7 @@ app.get('/health', (req, res) => {
 });
 
 // Serve static files from the public directory
-const publicPath = path.join(__dirname, '../public');
+const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 
 // Root endpoint serves index.html via express.static, but we can verify
