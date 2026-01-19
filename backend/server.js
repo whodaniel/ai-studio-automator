@@ -56,6 +56,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -63,6 +64,14 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'AI Video Intelligence Suite Backend is running',
+    docs: '/api'
   });
 });
 
