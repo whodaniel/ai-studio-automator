@@ -204,12 +204,45 @@ async function handleMessage(message, sender) {
 }
 
 // Queue management functions
+import apiClient from './services/api-client.js';
+
+// Replace local storage subscription checks with API calls
+async function checkSubscription() {
+  try {
+    const response = await apiClient.getSubscriptionStatus();
+    return response.data;
+  } catch (error) {
+    console.error('Failed to check subscription:', error);
+    return { tier: 'free' };
+  }
+}
+
 async function addToQueue(videos) {
-  const { queue = [] } = await chrome.storage.local.get('queue');
-  const updatedQueue = [...queue, ...videos];
-  await chrome.storage.local.set({ queue: updatedQueue });
-  console.log(`✅ Added ${videos.length} video(s) to queue. Total: ${updatedQueue.length}`);
-  return updatedQueue;
+  try {
+    const response = await apiClient.addToQueue(videos);
+    
+    // Sync local queue for UI
+    const { queue = [] } = await chrome.storage.local.get('queue');
+    const updatedQueue = [...queue, ...videos];
+    await chrome.storage.local.set({ queue: updatedQueue });
+    
+    console.log(`✅ Added ${videos.length} video(s) to queue via API. Total: ${updatedQueue.length}`);
+    return updatedQueue;
+  } catch (error) {
+    if (error.message && error.message.includes('Daily quota exceeded')) {
+      // Show upgrade prompt
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: 'Daily Limit Reached',
+        message: 'Upgrade to Pro for unlimited processing.'
+      });
+      // Return empty or error to stop processing logic
+      throw error; 
+    }
+    console.error('API Queue Error:', error);
+    throw error;
+  }
 }
 
 async function removeFromQueue(videoIds) {

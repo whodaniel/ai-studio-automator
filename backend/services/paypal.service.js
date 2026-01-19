@@ -44,13 +44,74 @@ class PayPalService {
     }
   }
 
-  async createSubscription(planId) {
-    // PayPal Subscriptions API logic would go here
-    // Note: The Checkout SDK handles one-time payments primarily. 
-    // Subscriptions usually require a different integration flow or the Subscriptions API directly.
-    // For MVP, simple recurring invoices or just one-time generic "Pro" purchases might be easier.
-    // We will assume standard subscription flow for now.
-    throw new Error('Subscription creation not fully implemented in MVP');
+  async getAccessToken() {
+    // Basic caching for token
+    if (this.token && this.tokenExpires > Date.now()) {
+      return this.token;
+    }
+
+    const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString('base64');
+    const baseUrl = this.environment.constructor.name === 'LiveEnvironment'
+      ? 'https://api-m.paypal.com'
+      : 'https://api-m.sandbox.paypal.com';
+
+    const response = await fetch(`${baseUrl}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials'
+    });
+
+    const data = await response.json();
+    
+    if (!data.access_token) {
+      throw new Error('Failed to retrieve PayPal access token');
+    }
+
+    this.token = data.access_token;
+    this.tokenExpires = Date.now() + (data.expires_in * 1000) - 60000; //Buffer 1 min
+    return this.token;
+  }
+
+  async createSubscription(planId, customId = '') {
+    const accessToken = await this.getAccessToken();
+    const baseUrl = this.environment.constructor.name === 'LiveEnvironment'
+      ? 'https://api-m.paypal.com'
+      : 'https://api-m.sandbox.paypal.com';
+
+    const response = await fetch(`${baseUrl}/v1/billing/subscriptions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        plan_id: planId,
+        custom_id: customId,
+        application_context: {
+          brand_name: 'AI Video Intelligence',
+          locale: 'en-US',
+          shipping_preference: 'NO_SHIPPING',
+          user_action: 'SUBSCRIBE_NOW',
+          return_url: `${process.env.API_URL}/api/subscriptions/success`,
+          cancel_url: `${process.env.API_URL}/api/subscriptions/cancel`
+        }
+      })
+    });
+
+    const data = await response.json();
+    return data;
+  }
+
+  // Verify webhook signature (helper)
+  async verifyWebhookSignature(headers, body, webhookId) {
+    // Implementation would use verify-webhook-signature endpoint
+    // verifying locally or via API
+    return true; // Placeholder
   }
 }
 

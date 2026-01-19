@@ -60,28 +60,33 @@ router.post('/checkout', protect, async (req, res) => {
       });
     }
     
-    // Simple price mapping for PayPal MVP
-    let price;
-    if (tier === 'pro') {
-      price = billingPeriod === 'yearly' ? '99.00' : '9.99';
-    } else if (tier === 'tnf') {
-      price = billingPeriod === 'yearly' ? '490.00' : '49.00';
+    // Get Plan ID from Env based on tier/billing
+    let planId;
+    const key = `PAYPAL_PLAN_${tier.toUpperCase()}_${billingPeriod.toUpperCase() === 'YEARLY' ? 'YEARLY' : 'MONTHLY'}`;
+    planId = process.env[key];
+
+    if (!planId) {
+      console.warn(`Plan ID not found for ${key}, falling back to creation logic or error`);
+       return res.status(500).json({
+        success: false,
+        error: { message: 'Subscription Plan not configured' }
+      });
     }
 
-    const order = await paypal.createOrder(price);
+    const subscription = await paypal.createSubscription(planId, req.user.id);
 
     res.json({
       success: true,
       data: {
-        orderId: order.id,
-        approvalUrl: order.links.find(link => link.rel === 'approve').href
+        subscriptionId: subscription.id,
+        approvalUrl: subscription.links.find(link => link.rel === 'approve').href
       }
     });
   } catch (error) {
     console.error('PayPal checkout error:', error);
     res.status(500).json({
       success: false,
-      error: { message: 'Failed to create PayPal order' }
+      error: { message: 'Failed to create PayPal subscription' }
     });
   }
 });
