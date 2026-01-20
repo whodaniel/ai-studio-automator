@@ -353,7 +353,7 @@
     <div class="container nav-flex">
       <a href="#" class="logo">
         <img src="logo.png" alt="Logo" style="height: 40px; width: auto; border-radius: 8px;">
-        AI Video Intel <span class="logo-badge">v1.4</span>
+        AI Video Intel <span class="logo-badge">v1.5</span>
       </a>
       <button onclick="signIn()" class="btn btn-outline login-btn" style="padding: 8px 16px; font-size: 0.9rem;">Sign In</button>
     </div>
@@ -537,32 +537,36 @@
     }
 
     async function handleCredentialResponse(response) {
-      // Decode JWT to get basic info (email/name) - simplified, usually backend does this
-      // Send to backend to get Session Cookie
       try {
         const payload = parseJwt(response.credential);
         
+        const bodyData = {
+          googleId: payload.sub,
+          email: payload.email,
+          displayName: payload.name,
+          avatarUrl: payload.picture,
+          youtubeRefreshToken: null
+        };
+        
+        console.log('[DEBUG] Sending login payload:', JSON.stringify(bodyData));
+
         const res = await fetch(`${API_URL}/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            googleId: payload.sub,
-            email: payload.email,
-            displayName: payload.name,
-            avatarUrl: payload.picture,
-            youtubeRefreshToken: null // Web flow doesn't give refresh token easily without code flow
-          })
+          body: JSON.stringify(bodyData)
         });
 
         const data = await res.json();
-        if (data.success) {
-          currentUser = data.data.user;
-          updateUIForLogin();
-          // DO NOT RELOAD to avoid state race conditions during checkout
+        
+        if (!data.success) {
+           throw new Error(data.error?.message || 'Login failed on backend');
         }
+
+        currentUser = data.data.user;
+        updateUIForLogin();
       } catch (e) {
         console.error('Login failed', e);
-        alert('Login failed. Please try again.');
+        alert('Login failed: ' + e.message);
       }
     }
 

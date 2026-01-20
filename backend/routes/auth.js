@@ -84,9 +84,13 @@ router.post('/google', async (req, res) => {
     });
   } catch (error) {
     console.error('Auth error:', error);
+    console.error('Auth error:', error);
     res.status(500).json({
       success: false,
-      error: { message: 'Authentication failed' }
+      error: { 
+        message: error.message || 'Authentication failed',
+        stack: process.env.NODE_ENV === 'development' ? error.stack : error.message // Expose message in prod for now
+      }
     });
   }
 });
