@@ -690,8 +690,11 @@ async function authenticateYouTube() {
     // This is crucial for account switching
     if (youtubeAccessToken) {
       try {
-        await chrome.identity.removeCachedAuthToken({ token: youtubeAccessToken });
-        console.log('🧹 Cleared previous cached token');
+        const tokenToRemove = (typeof youtubeAccessToken === 'object' && youtubeAccessToken?.token) ? youtubeAccessToken.token : youtubeAccessToken;
+        if (typeof tokenToRemove === 'string') {
+           await chrome.identity.removeCachedAuthToken({ token: tokenToRemove });
+           console.log('🧹 Cleared previous cached token');
+        }
       } catch (e) {
         console.warn('⚠️ Could not clear cached token:', e);
       }
@@ -708,8 +711,9 @@ async function authenticateYouTube() {
     // Attempt 1: Native Chrome Identity (Preferred)
     try {
       const token = await chrome.identity.getAuthToken({ interactive: true });
-      if (token) {
-        return await handleAuthSuccess(token);
+      const tokenStr = (typeof token === 'object' && token?.token) ? token.token : token;
+      if (tokenStr && typeof tokenStr === 'string') {
+        return await handleAuthSuccess(tokenStr);
       }
     } catch (nativeError) {
       console.warn('⚠️ Native auth failed, trying Web Flow:', nativeError);
@@ -771,6 +775,17 @@ async function authenticateWithWebFlow() {
 }
 
 async function handleAuthSuccess(token) {
+  // Defensive: Ensure token is a string
+  if (typeof token === 'object' && token !== null) {
+      console.warn('⚠️ handleAuthSuccess received object token, extracting string...');
+      token = token.token || token.access_token || ''; 
+  }
+
+  if (!token || typeof token !== 'string') {
+      console.error('❌ HandleAuthSuccess failed: Invalid token type', typeof token);
+      throw new Error('Invalid token type');
+  }
+
   youtubeAccessToken = token;
   youtubeTokenExpiry = Date.now() + (3600 * 1000); // 1 hour
 
@@ -827,10 +842,19 @@ async function isYouTubeAuthenticated() {
     if (stored.youtubeToken && stored.youtubeTokenExpiry) {
       if (now < stored.youtubeTokenExpiry) {
         // Sync to memory cache (this was missing before!)
-        youtubeAccessToken = stored.youtubeToken;
+        const storedToken = stored.youtubeToken;
+        youtubeAccessToken = (typeof storedToken === 'object' && storedToken?.token) ? storedToken.token : storedToken;
         youtubeTokenExpiry = stored.youtubeTokenExpiry;
-        console.log('✅ Found valid stored token. Expires in:', Math.floor((stored.youtubeTokenExpiry - now) / 1000), 's');
-        return { authenticated: true };
+
+        // Final sanity check
+        if (typeof youtubeAccessToken !== 'string') {
+            console.warn('⚠️ Stored token was not a string, treating as expired');
+            // Allow fall-through to expiration cleanup
+        } else {
+             console.log('✅ Found valid stored token. Expires in:', Math.floor((stored.youtubeTokenExpiry - now) / 1000), 's');
+             return { authenticated: true };
+        }
+        // Fall-through if invalid type
       } else {
          console.log('⚠️ Stored token expired. Now:', now, 'Expiry:', stored.youtubeTokenExpiry);
       }
@@ -973,15 +997,23 @@ async function getPlaylistVideos(playlistId) {
 async function signOutYouTube() {
   try {
     // Remove cached token from Chrome's identity API
+    // Remove cached token from Chrome's identity API
     if (youtubeAccessToken) {
-      await chrome.identity.removeCachedAuthToken({ token: youtubeAccessToken });
+      const tokenToRemove = (typeof youtubeAccessToken === 'object' && youtubeAccessToken?.token) ? youtubeAccessToken.token : youtubeAccessToken;
+      if (typeof tokenToRemove === 'string') {
+         await chrome.identity.removeCachedAuthToken({ token: tokenToRemove });
+      }
     }
 
     // Clear all cached tokens (important for account switching)
     try {
       const allTokens = await chrome.identity.getAllCachedAuthTokens();
       for (const tokenInfo of allTokens) {
-        await chrome.identity.removeCachedAuthToken({ token: tokenInfo.token });
+        // Handle if tokenInfo is string or object
+        const t = (typeof tokenInfo === 'object' && tokenInfo?.token) ? tokenInfo.token : tokenInfo;
+        if (typeof t === 'string') {
+           await chrome.identity.removeCachedAuthToken({ token: t });
+        }
       }
     } catch (e) {
       // getAllCachedAuthTokens might not be available in all Chrome versions
