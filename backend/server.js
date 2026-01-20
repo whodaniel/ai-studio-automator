@@ -62,8 +62,8 @@ const corsOptions = {
       process.env.FRONTEND_URL,
       process.env.WEB_DASHBOARD_URL,
       'http://localhost:3000',
-      'http://localhost:5173',
-      'http://localhost:5173'
+      'https://aivideointel.thenewfuse.com',
+      'https://accounts.google.com'
     ];
 
     // Check if origin is in allowed list or is a chrome extension

@@ -353,7 +353,7 @@
     <div class="container nav-flex">
       <a href="#" class="logo">
         <img src="logo.png" alt="Logo" style="height: 40px; width: auto; border-radius: 8px;">
-        AI Video Intel <span class="logo-badge">v1.3</span>
+        AI Video Intel <span class="logo-badge">v1.4</span>
       </a>
       <button onclick="signIn()" class="btn btn-outline login-btn" style="padding: 8px 16px; font-size: 0.9rem;">Sign In</button>
     </div>
@@ -558,7 +558,7 @@
         if (data.success) {
           currentUser = data.data.user;
           updateUIForLogin();
-          // location.reload(); // Refresh to clean state
+          // DO NOT RELOAD to avoid state race conditions during checkout
         }
       } catch (e) {
         console.error('Login failed', e);
@@ -568,14 +568,22 @@
 
     function updateUIForLogin() {
       const header = document.querySelector('header .container');
+      
+      // Remove old login button if it exists
       const oldBtn = header.querySelector('.login-btn');
       if (oldBtn) oldBtn.remove();
+
+      // Remove any existing user-nav to prevent duplicates
+      const oldUserNav = header.querySelector('.user-nav');
+      if (oldUserNav) oldUserNav.remove();
 
       // Show User Profile or Logout
       const userDiv = document.createElement('div');
       userDiv.className = 'user-nav';
+      userDiv.style.display = 'flex';
+      userDiv.style.alignItems = 'center';
       userDiv.innerHTML = `
-        <span style="color:white; margin-right:10px;">${currentUser.displayName}</span>
+        <span style="color:white; margin-right:15px; font-weight:500;">${currentUser.displayName}</span>
         <button onclick="logout()" class="btn btn-outline" style="padding: 8px 16px; font-size: 0.9rem;">Sign Out</button>
       `;
       header.appendChild(userDiv);
