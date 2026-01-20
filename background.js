@@ -739,6 +739,11 @@ async function authenticateWithWebFlow() {
   const redirectUri = chrome.identity.getRedirectURL();
   const scopes = encodeURIComponent(manifest.oauth2.scopes.join(' '));
   
+  console.log('ℹ️ OAUTH SETUP INFO:');
+  console.log('   Client ID:', clientId);
+  console.log('   Required Redirect URI:', redirectUri);
+  console.log('   Action: Add this Redirect URI to your Google Cloud Console for this Client ID.');
+  
   const authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${clientId}&response_type=token&redirect_uri=${redirectUri}&scope=${scopes}`;
   
   const redirectUrl = await chrome.identity.launchWebAuthFlow({
