@@ -725,6 +725,14 @@ async function authenticateYouTube() {
     throw new Error('Authentication failed');
   } catch (error) {
     console.error('❌ YouTube authentication failed:', error);
+    console.error('ℹ️ Current Extension ID:', chrome.runtime.id);
+    console.error('ℹ️ Please ensure this ID is authorized in Google Cloud Console.');
+    
+    // Reset web auth preference to allow retrying native auth if it was a transient issue
+    if (error.message && (error.message.includes('User did not approve') || error.message.includes('Authorization page could not be loaded'))) {
+       await chrome.storage.local.remove('preferWebAuth');
+    }
+    
     throw error;
   }
 }

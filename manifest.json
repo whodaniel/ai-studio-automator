@@ -5,6 +5,8 @@
   "description": "Process YouTube videos through AI Studio and NotebookLM automatically. Build your AI-powered knowledge base 10x faster.",
   "author": "Your Name",
   
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3dwTWwdbMyZbpq3O5VWplCZdkjeSCRcgEw9gN7t/eWLN0dMs9+rcBgMa/XZrF/kRJM1KYkRqGuL23X1zWcElrtKQHQt7sJQ9WvqDkSbd14GeY30eyp1GtzqemCdbD0VLGxJUMoemHzjQdjFsgDBQs3J5nvH1fhWTZPDsDBukcWiA666yrpiy5AjTV3pfkw2Hgx44Apj1FDRSHy9jmCh+MoWqX+PZKhILGEEIynACVAXOU3jp21I3AxOVqHukoqtFlRJE6rRjZQToChricMz0grTSiCzNP/6NBb0O/mrfzdBSVV/PnZ7BSWOWNlPCIHTZ1dIVeAp4Q71pvXq4PSK+CQIDAQAB",
+
   "permissions": [
     "storage",
     "unlimitedStorage",
