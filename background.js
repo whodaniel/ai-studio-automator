@@ -1101,28 +1101,7 @@ async function createPlaylist(title, description) {
 }
 
 // Subscription Management Functions
-async function checkSubscription() {
-  try {
-    const { tier = 'free', features } = await chrome.storage.local.get(['tier', 'features']);
-    
-    return {
-      tier: tier,
-      features: features || {
-        youtubeIntegration: true,
-        aiStudioAutomation: true,
-        notebooklmIntegration: tier !== 'free',
-        podcastCreation: tier !== 'free',
-        cloudSync: tier !== 'free',
-        customPrompts: tier !== 'free',
-        autoDownload: true,
-        retryLogic: true
-      }
-    };
-  } catch (error) {
-    console.error('Error checking subscription:', error);
-    return { tier: 'free', features: {} };
-  }
-}
+
 
 async function canProcessVideo() {
   try {
