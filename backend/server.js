@@ -72,9 +72,14 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Serve static files from the public directory
+// Serve static files from the local directory
 const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
+
+// Explicit routes for cleaner URLs
+app.get('/support', (req, res) => {
+  res.sendFile(path.join(publicPath, 'support.html'));
+});
 
 // Root endpoint serves index.html via express.static, but we can verify
 // Or we can leave this specific handler if we want to confirm backend is running at /api/health
